@@ -138,6 +138,35 @@ nli_entailment_threshold: 0.65
 | HaluEval | `--dataset halueval` |
 | Custom | `--dataset /path/to/data.jsonl` |
 
+## Standalone Detector Comparison (no router required)
+
+Two scripts evaluate detectors directly, outside the router stack:
+
+- `evaluate_detectors.py` — any detector supported by the `lettucedetect`
+  library (encoder or generative via an OpenAI-compatible endpoint)
+- `evaluate_halugate.py` — the halugate sentinel + detector pipeline
+  (public models, paper serialization, optional threshold sweep)
+
+```bash
+pip install lettucedetect datasets
+python3 -m bench.hallucination.evaluate_detectors \
+    --detector llm:KRLabsOrg/lettucedect-v2-qwen-2b \
+    --base-url http://localhost:8077/v1 --dataset halueval --max-samples 1000
+python3 -m bench.hallucination.evaluate_halugate --max-samples 1000 --sweep
+```
+
+Example-level results on the first 1000 HaluEval QA samples (2026-07):
+
+| Detector | Config | Precision | Recall | F1 | Accuracy | p50 |
+|----------|--------|-----------|--------|----|----------|-----|
+| `KRLabsOrg/lettucedect-v2-qwen-2b` (vLLM-served) | native | 0.967 | 0.781 | 0.864 | 0.872 | ~113ms |
+| `llm-semantic-router/modernbert-base-32k-haldetect-combined` | best swept (thr 0.3, span 1) | 1.000 | 0.477 | 0.646 | 0.728 | ~13ms |
+| same | production (thr 0.82, span 2) | 1.000 | 0.381 | 0.552 | 0.678 | ~13ms |
+
+The sentinel gate skips 1/1000 samples on this all-factual dataset (correct
+behavior — its efficiency win applies to mixed workloads). Both serializations
+(router format and paper format) were tested; the difference is <2 F1 points.
+
 ## Output
 
 Results saved to `bench/hallucination/results/` with:
