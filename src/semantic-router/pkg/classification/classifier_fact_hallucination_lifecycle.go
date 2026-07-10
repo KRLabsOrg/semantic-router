@@ -82,6 +82,9 @@ func wireFusionGroundingBackends(detector *HallucinationDetector) {
 }
 
 func (c *Classifier) initializeHallucinationNLI(detector *HallucinationDetector) {
+	if detector.IsEndpointBackend() {
+		return // generative endpoint explains spans itself
+	}
 	if c.Config.HallucinationMitigation.NLIModel.ModelID == "" {
 		return
 	}
@@ -129,6 +132,11 @@ func (c *Classifier) DetectHallucination(context, question, answer string) (*Hal
 func (c *Classifier) DetectHallucinationWithNLI(context, question, answer string) (*EnhancedHallucinationResult, error) {
 	if c.hallucinationDetector == nil || !c.hallucinationDetector.IsInitialized() {
 		return nil, fmt.Errorf("hallucination detector is not initialized")
+	}
+
+	if c.hallucinationDetector.IsEndpointBackend() {
+		// One generative call returns typed spans with explanations — no separate NLI pass.
+		return c.hallucinationDetector.DetectViaEndpoint(context, question, answer)
 	}
 
 	if !c.hallucinationDetector.IsNLIInitialized() {

@@ -54,6 +54,20 @@ func (d *HallucinationDetector) Initialize() error {
 		return nil
 	}
 
+	if d.IsEndpointBackend() {
+		if d.config.Endpoint.BaseURL == "" {
+			return fmt.Errorf("hallucination detector backend is %q but endpoint.base_url is not set", HallucinationBackendOpenAICompatible)
+		}
+		// No weights to load; the endpoint is dialed per request so it may come up later.
+		d.initialized = true
+		logging.ComponentEvent("classifier", "hallucination_detector_initialized", map[string]interface{}{
+			"backend":   HallucinationBackendOpenAICompatible,
+			"model_ref": d.config.ModelID,
+			"endpoint":  d.config.Endpoint.BaseURL,
+		})
+		return nil
+	}
+
 	err := candle.InitHallucinationModel(d.config.ModelID, d.config.UseCPU)
 	if err != nil {
 		return fmt.Errorf("failed to initialize hallucination detection model from %s: %w", d.config.ModelID, err)
@@ -89,6 +103,14 @@ func (d *HallucinationDetector) Detect(context, question, answer string) (*Hallu
 
 	if context == "" {
 		return nil, fmt.Errorf("context is required for hallucination detection")
+	}
+
+	if d.IsEndpointBackend() {
+		enhanced, err := d.detectViaEndpointLocked(context, question, answer)
+		if err != nil {
+			return nil, err
+		}
+		return basicResultFromEnhanced(enhanced), nil
 	}
 
 	// Get threshold from config (default 0.5)
