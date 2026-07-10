@@ -263,6 +263,24 @@ type HallucinationModelConfig struct {
 	ContextWindowSize      int     `yaml:"context_window_size,omitempty"`
 	EnableNLIFiltering     bool    `yaml:"enable_nli_filtering,omitempty"`
 	NLIEntailmentThreshold float32 `yaml:"nli_entailment_threshold,omitempty"`
+	// Backend selects the detector implementation: "candle" (default, in-process
+	// token classifier) or "openai_compatible" (generative span detector behind an
+	// OpenAI-compatible endpoint, e.g. lettucedect-v2-qwen-2b served by vLLM).
+	Backend string `yaml:"backend,omitempty"`
+	// Endpoint configures the remote detector. Required when backend is
+	// "openai_compatible".
+	Endpoint HallucinationEndpointConfig `yaml:"endpoint,omitempty"`
+	// IncludeExplanation asks the generative detector for a per-span explanation
+	// in addition to category/subcategory. openai_compatible backend only.
+	IncludeExplanation bool `yaml:"include_explanation,omitempty"`
+}
+
+// HallucinationEndpointConfig configures an OpenAI-compatible detector endpoint,
+// mirroring EmbeddingEndpointConfig.
+type HallucinationEndpointConfig struct {
+	BaseURL        string `yaml:"base_url,omitempty"`
+	APIKeyEnv      string `yaml:"api_key_env,omitempty"`
+	TimeoutSeconds int    `yaml:"timeout_seconds,omitempty"`
 }
 
 type NLIModelConfig struct {
