@@ -38,6 +38,36 @@ Split by `question_id` so no question appears in both train and test.
 - agreement with the routing label;
 - rule count, and traffic coverage per rule.
 
+## Model ladder
+
+`ladder.json` maps each result directory to a relative cost. The current run uses
+four Qwen2.5-Instruct models served locally, with cost taken as the parameter
+ratio against the smallest — a stand-in for price, since all four run on the same
+hardware here.
+
+| Model | Relative cost |
+| --- | --- |
+| Qwen2.5-1.5B-Instruct | 1.0 |
+| Qwen2.5-7B-Instruct | 4.7 |
+| Qwen2.5-14B-Instruct | 9.3 |
+| Qwen2.5-32B-Instruct-AWQ | 21.3 |
+
+## Running it
+
+Serve one endpoint per model, then:
+
+```bash
+export RULECHEF_API_KEY=...      # rule synthesis only; no LLM at policy-eval time
+./run.sh
+```
+
+`run.sh` evaluates every model on the same question sample (same `--seed` and
+`--samples-per-category`, so the results join on `question_id`), builds the
+labels, splits by question, learns rules from the training split, and scores all
+policies on the held-out split. Results land in `out/metrics.json`.
+
+The scripts also run individually; see `--help` on each.
+
 ## Status
 
-Protocol only. No results yet.
+Scaffolded. No results yet.

@@ -1,0 +1,6 @@
+{
+  "Qwen_Qwen2.5-1.5B-Instruct_direct": 1.0,
+  "Qwen_Qwen2.5-7B-Instruct_direct": 4.7,
+  "Qwen_Qwen2.5-14B-Instruct_direct": 9.3,
+  "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 21.3
+}
