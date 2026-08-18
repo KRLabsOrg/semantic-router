@@ -109,46 +109,68 @@ in any shared benchmark protocol for routing strategies (#2346).
 Also report rule count and per-rule traffic coverage, so that interpretability is
 measured rather than asserted.
 
-## What the first experiment shows
+## What the experiment shows
 
 `experiments/learned-decision-rules/` runs the protocol on MMLU-Pro across a
-four-model Qwen2.5 ladder (1.5B / 7B / 14B / 32B-AWQ), 1680 questions, 60/40
-split by question.
+four-model Qwen2.5 ladder, 1680 questions, 60/40 split by question. Signals are
+computed by porting the extractors in `pkg/classification` and reading their
+definitions from `config/config.yaml`, so rules are learned and evaluated in the
+router's own vocabulary. The shipped `routing.decisions` block is evaluated
+programmatically over the same signals.
 
 | Policy | Accuracy | Mean cost | Gain over frontier |
 | --- | --- | --- | --- |
 | strongest | 0.613 | 21.30 | +0.000 |
 | category | 0.603 | 18.66 | +0.013 |
-| induced | 0.552 | 14.33 | +0.000 |
+| shipped rules, declared model | 0.433 | 4.70 | +0.000 |
+| shipped rules, best case in candidate set | 0.463 | 5.19 | +0.022 |
+| learned rules over signals | 0.613 | 21.30 | +0.000 |
+| signal lookup table | 0.586 | 18.89 | −0.006 |
 | oracle | 0.757 | 9.96 | +0.244 |
 
-The routable structure is large: the oracle sits 24.4 points above the frontier.
-Induced rules do not recover it — they land exactly on the frontier, so they are
-worth nothing over a fixed model mix. Neither does a TF-IDF and
-logistic-regression probe, which is free of any rule-format constraint and lands
-1.9 points below it. Predicting a single model's success from the request text
-reaches AUC 0.58–0.62.
+The lookup table is the result that settles the question. A rule set is a
+function of the signal vector, so one routing choice per distinct vector is the
+most expressive rule set that can exist — and it does not beat a fixed model
+mix. No rule format and no induction method can do better over this vocabulary.
+Across 672 held-out requests the signals take only **40 distinct values**, while
+the oracle sits 24.4 points above the frontier. The routable structure is real
+and is not expressible in 40 states.
 
-The bottleneck is the input, not the rule format. Request text says what a
-request is about; it does not say whether a given model will answer it correctly.
-Two consequences for this proposal:
+Evaluating the shipped rules against traffic rather than reading them also
+surfaces conditions that cannot fire:
 
-- induction over request-derived signals alone should not be expected to improve
-  much on the current per-category configuration, and should not be pitched as
-  though it will;
-- the signals that would carry routing information are outcome-derived — a small
-  model's own uncertainty, self-consistency across samples, or a verifier's
-  judgement of a draft answer. Those are not currently signal types, and adding
-  one is a larger change than rule induction.
+- `safe_only_svm_route`, whose condition is `NOT jailbreak:prompt_injection`,
+  fires for 77% of requests and acts as the default;
+- 55% of requests match no `domain`, since six are configured;
+- `complexity:needs_reasoning` never leaves `medium`: the measured margin spans
+  −0.096 to 0.210 against a ±0.75 threshold, so `:hard` is unreachable with the
+  shipped candidate phrases. Three decisions gated on it cannot fire, and one
+  branch of `safe_hybrid_route` is dead;
+- `context:long_context` never fires, with a 32K floor.
 
-The frontier control is the reusable part of this result regardless of what
-happens to the rest: it is a cheap way to tell a real routing gain from a
-spending increase.
+## Consequence for this proposal
+
+Rule induction should not be pursued as a way to improve routing quality over
+the current signal set: the ceiling for any rule system over that set is at the
+frontier. Two parts of the work stand on their own:
+
+- the **mixing-frontier control**, which distinguishes a routing gain from a
+  spending increase, and which belongs in the shared benchmark protocol (#2346);
+- **dead-condition detection**, which the same machinery produces as a by-product
+  and which the conflict checker cannot see, because these conditions are
+  well-formed and merely unreachable in practice.
+
+Closing the oracle gap needs signals that carry outcome information — a model's
+own uncertainty, self-consistency across samples, or a verifier on a draft
+answer. That direction matches the outcome tables and offline-RL agenda in the
+WRP vision paper, and it is a larger change than rule induction.
 
 ## Open questions
 
-- Given that request-derived features measure so weakly, is rule induction worth
-  pursuing before an outcome-derived signal type exists?
+- Is an outcome-derived signal type the actual prerequisite, given that the rule
+  ceiling over request-derived signals is at the frontier?
+- Should unreachable conditions be reported by tooling, given that three shipped
+  decisions are gated on a band their threshold makes unattainable?
 - Which feature vocabulary is admissible: only signals the router already
   computes, or also cheap request-derived features that would need a new signal?
 - How should induced rules be ordered against hand-authored ones — separate

@@ -1,0 +1,4 @@
+{
+  "qwen3-8b": "Qwen_Qwen2.5-7B-Instruct_direct",
+  "qwen3-32b": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct"
+}

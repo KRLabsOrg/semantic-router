@@ -32,13 +32,30 @@ for model in "${!ENDPOINTS[@]}"; do
     --output-dir "$OUT/results"
 done
 
+CONFIG="${CONFIG:-$HERE/../../config/config.yaml}"
+
 python "$HERE/build_labels.py" \
   --results-dir "$OUT/results" --ladder "$HERE/ladder.json" --out "$OUT/labels.csv"
 python "$HERE/make_split.py" --labels "$OUT/labels.csv" --out "$OUT/split.json"
+
+# Needs a GPU and the configured embedding model; skip to leave complexity unset.
+python "$HERE/compute_complexity.py" \
+  --labels "$OUT/labels.csv" --config "$CONFIG" --out "$OUT/complexity.json"
+python "$HERE/compute_signals.py" \
+  --labels "$OUT/labels.csv" --config "$CONFIG" \
+  --complexity "$OUT/complexity.json" --out "$OUT/signals.csv"
+python "$HERE/apply_config_rules.py" \
+  --signals "$OUT/signals.csv" --labels "$OUT/labels.csv" --config "$CONFIG" \
+  --model-map "$HERE/model_map.json" --ladder "$HERE/ladder.json" \
+  --out "$OUT/handwritten.csv"
+
 python "$HERE/learn_rules.py" \
-  --labels "$OUT/labels.csv" --split "$OUT/split.json" --out-dir "$OUT/rules"
+  --labels "$OUT/labels.csv" --signals "$OUT/signals.csv" \
+  --split "$OUT/split.json" --out-dir "$OUT/rules"
 python "$HERE/evaluate_policies.py" \
-  --labels "$OUT/labels.csv" --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
+  --labels "$OUT/labels.csv" --signals "$OUT/signals.csv" \
+  --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
+  --handwritten "$OUT/handwritten.csv" \
   --rules "$OUT/rules/routing_rules.json" --out "$OUT/metrics.json"
 python "$HERE/probe_ceiling.py" \
   --labels "$OUT/labels.csv" --split "$OUT/split.json" --ladder "$HERE/ladder.json" \

@@ -40,17 +40,50 @@ Split by `question_id` so no question appears in both train and test.
 
 ## Model ladder
 
-`ladder.json` maps each result directory to a relative cost. The current run uses
-four Qwen2.5-Instruct models served locally, with cost taken as the parameter
-ratio against the smallest — a stand-in for price, since all four run on the same
+`ladder.json` maps each result directory to a relative cost. The run uses four
+Qwen2.5-Instruct models served locally, with cost taken as the parameter ratio
+against the smallest — a stand-in for price, since all four run on the same
 hardware here.
 
-| Model | Relative cost |
-| --- | --- |
-| Qwen2.5-1.5B-Instruct | 1.0 |
-| Qwen2.5-7B-Instruct | 4.7 |
-| Qwen2.5-14B-Instruct | 9.3 |
-| Qwen2.5-32B-Instruct-AWQ | 21.3 |
+| Model | Relative cost | Accuracy |
+| --- | --- | --- |
+| Qwen2.5-1.5B-Instruct | 1.0 | 0.274 |
+| Qwen2.5-7B-Instruct | 4.7 | 0.434 |
+| Qwen2.5-14B-Instruct | 9.3 | 0.529 |
+| Qwen2.5-32B-Instruct-AWQ | 21.3 | 0.610 |
+
+`model_map.json` maps the config's model names onto this ladder by size class:
+`qwen3-8b` to the 7B, `qwen3-32b` to the 32B.
+
+## Signals, not request text
+
+Decision rules match on signals, so the experiment works in that vocabulary.
+`compute_signals.py` ports the extractors from
+`src/semantic-router/pkg/classification` and reads their definitions out of
+`config/config.yaml`; `compute_complexity.py` supplies the embedding margin.
+Parity per family is documented in the module docstring — `structure` and
+`complexity` are exact ports, `keyword` uses documented approximations because
+the router delegates BM25, n-gram and fuzzy matching to the Rust NLP binding.
+
+Rules are learned and executed over the rendered signal vector
+(`signal_text.py`), for example:
+
+```text
+domain=law needs_reasoning=medium signals=at_most_one_question,low_question_density
+```
+
+## Baselines a router must actually beat
+
+A router that spends more also scores more, so accuracy and cost side by side
+prove nothing. Mixing two models at a fixed ratio, inspecting nothing, already
+traces a cost/accuracy curve: the upper convex hull of the always-one-model
+policies. `evaluate_policies.py` computes that hull and reports every policy's
+`gain_over_frontier` — accuracy minus what the hull reaches at the same cost.
+
+The second baseline is the ceiling on rule learning itself. A rule set is a
+function of the signal vector, so a lookup table with one routing choice per
+distinct vector is the most expressive rule set that can exist. Whatever
+`signal_lookup` scores bounds every rule format, hand-written or learned.
 
 ## Running it
 
@@ -62,60 +95,77 @@ export RULECHEF_API_KEY=...      # rule synthesis only; no LLM at policy-eval ti
 ```
 
 `run.sh` evaluates every model on the same question sample (same `--seed` and
-`--samples-per-category`, so the results join on `question_id`), builds the
-labels, splits by question, learns rules from the training split, and scores all
-policies on the held-out split. Results land in `out/metrics.json`.
-
-The scripts also run individually; see `--help` on each.
-
-## Baselines a router must actually beat
-
-Reporting accuracy and cost side by side is not enough: a router that spends more
-also scores more. Mixing two models at a fixed ratio, with no request inspection
-at all, already traces a cost/accuracy curve — the upper convex hull of the
-always-one-model policies. `evaluate_policies.py` computes that hull on the test
-split and reports every policy's `gain_over_frontier`: accuracy minus what the
-hull reaches at the same cost. A router earns its keep only above zero.
+`--samples-per-category`, so results join on `question_id`), computes signals,
+applies the shipped rules, learns rules, and scores all policies on the held-out
+split. Results land in `out/`. The scripts also run individually; see `--help`.
 
 ## Results
 
-MMLU-Pro, 120 questions per category, 1680 questions total, same sample for every
-model. 1267 answered correctly by at least one model. Split 60/40 by question,
-seed 42: 1008 train, 672 test. Rules synthesised by `openai/gpt-oss-120b`.
-
-Single-model accuracy on the full sample: 1.5B 0.274, 7B 0.434, 14B 0.529,
-32B-AWQ 0.610.
+MMLU-Pro, 120 questions per category, 1680 total, same sample for every model.
+1267 answered by at least one model. Split 60/40 by question, seed 42. Rules
+synthesised by `openai/gpt-oss-120b` via Baseten.
 
 | Policy | Accuracy | Mean cost | Gain over frontier |
 | --- | --- | --- | --- |
 | strongest (always 32B) | 0.613 | 21.30 | +0.000 |
 | category (per-category argmax) | 0.603 | 18.66 | +0.013 |
-| induced (15 learned rules) | 0.552 | 14.33 | +0.000 |
-| oracle (cheapest correct model) | 0.757 | 9.96 | **+0.244** |
+| shipped rules, declared model | 0.433 | 4.70 | +0.000 |
+| shipped rules, best case in candidate set | 0.463 | 5.19 | +0.022 |
+| learned rules over signals | 0.613 | 21.30 | +0.000 |
+| **signal lookup table (ceiling for any rule set)** | 0.586 | 18.89 | **−0.006** |
+| oracle (cheapest correct model) | 0.757 | 9.96 | +0.244 |
 
-The induced rules run in 2.2 ms per request with no LLM call, and route 48% of
-requests — the rest fall through to the strongest model.
+### The signal vocabulary is the binding constraint
 
-### The signal exists; request text does not carry it
+The lookup table is the most expressive rule set possible over these signals,
+and it does not beat a fixed model mix. No rule format and no learning method
+can do better, because every rule set is a function of the same vector. Rule
+learning is therefore not the lever here.
 
-The oracle sits 24.4 points above the mixing frontier, so there is a large amount
-of routable structure in this data. Neither approach recovers it:
+The reason is visible in the signals themselves. Across 672 held-out questions
+there are **40 distinct signal vectors**. Meanwhile the oracle sits 24.4 points
+above the frontier, so the routable structure exists — it just is not expressible
+in 40 states.
 
-- learned rules land exactly on the frontier — worth nothing over a fixed mix;
-- the per-category configuration the repo generates today gains 1.3 points;
-- a TF-IDF + logistic-regression probe (`probe_ceiling.py`), which is free of any
-  rule-format constraint, lands 1.9 points *below* the frontier.
+### What the shipped rules do on this traffic
 
-Predicting a single model's success from the request text reaches AUC 0.58–0.62,
-depending on the model. Above chance, and far too weak to route on.
+Evaluating `config/config.yaml` against real requests, rather than reading it:
 
-The limit is therefore the input, not the rule format. Request text says what a
-question is about; it does not say whether a given model will get it right. Rule
-induction over signals derived from the request alone should not be expected to
-beat the current per-category configuration by much.
+- `safe_only_svm_route` — whose condition is `NOT jailbreak:prompt_injection` —
+  fires for 77% of requests. It is the de facto default.
+- 55% of requests match no `domain` at all: the config defines six domains, and
+  MMLU-Pro has fourteen categories.
+- `complexity:needs_reasoning` never leaves the `medium` band. The measured
+  margin spans −0.096 to 0.210 against a configured threshold of ±0.75, so
+  `:hard` and `:easy` are unreachable with the shipped candidate phrases. Three
+  decisions gated on `needs_reasoning:hard` — `computer-science-remom-route`,
+  `deliberation-fusion-route`, `router-flow-workflow-route` — cannot fire, and
+  one branch of `safe_hybrid_route` is dead.
+- `context:long_context` never fires: its floor is 32K tokens.
+
+The shipped policy reduces, on this traffic, to routing almost everything to the
+smaller model. That lands it exactly on the frontier: +0.000.
+
+### Cross-check
+
+Two earlier runs agree. Rules learned over raw request text also landed on the
+frontier, and a TF-IDF and logistic-regression probe over request text landed
+1.9 points below it. Predicting one model's success from the request reaches AUC
+0.58–0.62 (`probe_ceiling.py`).
+
+## Conclusion
+
+Learning cannot improve the hand-written rules while both are limited to the same
+signals: the ceiling for any rule set over that vocabulary is at the frontier.
+The gap the oracle shows is real, but closing it needs signals that carry outcome
+information — a model's own uncertainty, self-consistency across samples, or a
+verifier on a draft answer — not better rules over the existing ones.
+
+Two findings are usable independently of that conclusion: the frontier control,
+which separates a routing gain from a spending increase, and the measured dead
+conditions in the shipped config.
 
 ## Status
 
-First run complete. The scored artifacts are checked in under
-`run-2026-08-18/`: `metrics.json`, `probe.json`, and the 15 learned rules in
-`routing_rules.json`. A fresh `./run.sh` writes to `out/`, which is not tracked.
+Complete. Scored artifacts are checked in under `run-2026-08-18/`. A fresh
+`./run.sh` writes to `out/`, which is not tracked.

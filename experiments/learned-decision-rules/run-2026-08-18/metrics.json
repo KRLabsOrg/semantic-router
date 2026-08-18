@@ -10,6 +10,20 @@
     "frontier_accuracy": 0.6130952380952381,
     "gain_over_frontier": 0.0
   },
+  "signal_lookup": {
+    "accuracy": 0.5863095238095238,
+    "mean_cost": 18.886011904761904,
+    "routed_cheaper_no_loss": 0.08630952380952381,
+    "label_agreement": 0.11160714285714286,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.8258928571428571,
+      "Qwen_Qwen2.5-14B-Instruct_direct": 0.1130952380952381,
+      "Qwen_Qwen2.5-7B-Instruct_direct": 0.049107142857142856,
+      "Qwen_Qwen2.5-1.5B-Instruct_direct": 0.011904761904761904
+    },
+    "frontier_accuracy": 0.5918411266416289,
+    "gain_over_frontier": -0.005531602832105076
+  },
   "category": {
     "accuracy": 0.6026785714285714,
     "mean_cost": 18.65714285714286,
@@ -55,21 +69,49 @@
       "psychology": "Qwen_Qwen2.5-14B-Instruct_direct"
     }
   },
-  "induced": {
-    "accuracy": 0.5520833333333334,
-    "mean_cost": 14.332142857142859,
-    "routed_cheaper_no_loss": 0.21428571428571427,
-    "label_agreement": 0.13988095238095238,
+  "handwritten_declared": {
+    "accuracy": 0.4330357142857143,
+    "mean_cost": 4.7,
+    "routed_cheaper_no_loss": 0.4330357142857143,
+    "label_agreement": 0.2544642857142857,
     "model_share": {
-      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.5014880952380952,
-      "Qwen_Qwen2.5-14B-Instruct_direct": 0.28422619047619047,
-      "Qwen_Qwen2.5-7B-Instruct_direct": 0.21428571428571427
+      "Qwen_Qwen2.5-7B-Instruct_direct": 1.0
     },
-    "unmatched_share": 0.4836309523809524,
-    "ms_per_question": 2.174994357119431,
+    "frontier_accuracy": 0.4330357142857143,
+    "gain_over_frontier": 0.0
+  },
+  "handwritten_best_case": {
+    "accuracy": 0.46279761904761907,
+    "mean_cost": 5.194047619047619,
+    "routed_cheaper_no_loss": 0.4330357142857143,
+    "label_agreement": 0.27380952380952384,
+    "model_share": {
+      "Qwen_Qwen2.5-7B-Instruct_direct": 0.9702380952380952,
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.02976190476190476
+    },
+    "frontier_accuracy": 0.4410269089519866,
+    "gain_over_frontier": 0.021770710095632473
+  },
+  "_decisions_fired": {
+    "safe_only_svm_route": 519,
+    "legal_confidence_route": 51,
+    "static_business_route": 47,
+    "prompt_selected_route": 46,
+    "urgent_automix_route": 9
+  },
+  "induced": {
+    "accuracy": 0.6130952380952381,
+    "mean_cost": 21.3,
+    "routed_cheaper_no_loss": 0.0,
+    "label_agreement": 0.09523809523809523,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 1.0
+    },
+    "unmatched_share": 1.0,
+    "ms_per_question": 0.08259387496287846,
     "fallback": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
-    "frontier_accuracy": 0.5517462974773243,
-    "gain_over_frontier": 0.0003370358560090825
+    "frontier_accuracy": 0.6130952380952381,
+    "gain_over_frontier": 0.0
   },
   "_frontier": [
     [

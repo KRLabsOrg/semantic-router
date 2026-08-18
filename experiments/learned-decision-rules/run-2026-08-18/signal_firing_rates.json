@@ -1,0 +1,28 @@
+{
+  "structure::many_questions": 0.0017857142857142857,
+  "structure::at_most_one_question": 0.9714285714285714,
+  "structure::numbered_steps": 0.0017857142857142857,
+  "structure::first_then_flow": 0.005357142857142857,
+  "structure::constraint_dense": 0.0017857142857142857,
+  "structure::format_directive_dense": 0.0005952380952380953,
+  "structure::low_question_density": 0.7773809523809524,
+  "structure::long_current_turn_bytes": 0.0005952380952380953,
+  "keyword::code_keywords": 0.025595238095238095,
+  "keyword::machine_learning": 0.0035714285714285713,
+  "keyword::urgent_keywords": 0.024404761904761905,
+  "keyword::fuzzy_sensitive_keywords": 0.0017857142857142857,
+  "context::long_context": 0.0,
+  "complexity::needs_reasoning": {
+    "filtered": 1560,
+    "medium": 120
+  },
+  "domain": {
+    "<none>": 960,
+    "business": 120,
+    "law": 120,
+    "psychology": 120,
+    "other": 120,
+    "health": 120,
+    "computer science": 120
+  }
+}

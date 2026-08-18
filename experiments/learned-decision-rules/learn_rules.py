@@ -14,12 +14,16 @@ from pathlib import Path
 import pandas as pd
 from openai import OpenAI
 from rulechef import RuleChef, RuleFormat, Task, TaskType
+from signal_text import signal_text
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--labels", type=Path, required=True, help="build_labels.py output CSV"
+    )
+    parser.add_argument(
+        "--signals", type=Path, required=True, help="compute_signals.py output CSV"
     )
     parser.add_argument(
         "--split",
@@ -52,12 +56,12 @@ def build_task() -> Task:
     return Task(
         name="Model routing",
         description=(
-            "Given a request reaching an LLM router, prefixed with its domain "
-            "signal in square brackets, choose the cheapest model expected to "
-            "answer it correctly. Larger models cost more, so route up only when "
-            "the request needs it. Requests no rule matches fall back to the "
-            "strongest model, so a rule is only worth writing when it can safely "
-            "route below that."
+            "Input is a routing signal vector: a domain, a complexity band, and "
+            "the list of structure and keyword signals that fired. Choose the "
+            "cheapest model expected to answer the request correctly. Larger "
+            "models cost more, so route up only when the signals call for it. "
+            "Anything no rule matches falls back to the strongest model, so a "
+            "rule is only worth writing when it can safely route below that."
         ),
         input_schema={"text": "str"},
         output_schema={"label": "str"},
@@ -73,6 +77,8 @@ def main():
         raise SystemExit("set RULECHEF_API_KEY (or BASETEN_API_KEY)")
 
     labels = pd.read_csv(args.labels)
+    signals = pd.read_csv(args.signals)
+    labels = labels.merge(signals, on="question_id", suffixes=("", "_signal"))
     split = json.loads(args.split.read_text())
     train_ids = set(split["train"])
 
@@ -92,8 +98,7 @@ def main():
         synthesis_strategy="per_class",
     )
     for _, row in train.iterrows():
-        text = f"[{row['category']}] {row['question']}"
-        chef.add_example({"text": text}, {"label": row["label"]})
+        chef.add_example({"text": signal_text(row)}, {"label": row["label"]})
 
     chef.learn_rules(max_refinement_iterations=args.refinement_iterations)
 

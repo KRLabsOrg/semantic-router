@@ -17,12 +17,22 @@ from pathlib import Path
 
 import pandas as pd
 
+from signal_text import signal_text
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--labels", type=Path, required=True)
     parser.add_argument("--split", type=Path, required=True)
     parser.add_argument("--ladder", type=Path, required=True)
+    parser.add_argument(
+        "--signals", type=Path, required=True, help="compute_signals.py output CSV"
+    )
+    parser.add_argument(
+        "--handwritten",
+        type=Path,
+        help="apply_config_rules.py output; adds the shipped-rules policy",
+    )
     parser.add_argument(
         "--rules",
         type=Path,
@@ -101,6 +111,24 @@ def policy_strongest(train: pd.DataFrame, ladder: dict) -> str:
     return max(ladder, key=lambda name: train[f"correct::{name}"].mean())
 
 
+def policy_signal_lookup(train: pd.DataFrame, ladder: dict) -> dict:
+    """Best possible rule system: one routing choice per distinct signal vector.
+
+    A rule set is a function of the signal vector, so a lookup table over those
+    vectors is the most expressive rule set that can exist. Whatever this scores
+    bounds every rule format, hand-written or learned.
+    """
+    table = {}
+    for key, group in train.groupby(
+        [rule_input(row) for _, row in train.iterrows()], sort=False
+    ):
+        table[key] = max(
+            ladder,
+            key=lambda name: (group[f"correct::{name}"].mean(), -ladder[name]),
+        )
+    return table
+
+
 def policy_category(train: pd.DataFrame, ladder: dict) -> dict:
     """Best model per category on the training split, ties broken by cost."""
     best = {}
@@ -113,8 +141,8 @@ def policy_category(train: pd.DataFrame, ladder: dict) -> dict:
 
 
 def rule_input(row) -> str:
-    """The text a rule sees: the request plus the domain signal the router already has."""
-    return f"[{row['category']}] {row['question']}"
+    """The text a rule sees: the signal vector, not the request."""
+    return signal_text(row)
 
 
 def run_rules(rules_path: Path, questions: list, ladder: dict, fallback: str) -> tuple:
@@ -151,7 +179,9 @@ def main():
     args = parse_args()
     ladder = json.loads(args.ladder.read_text())
     split = json.loads(args.split.read_text())
-    labels = pd.read_csv(args.labels)
+    labels = pd.read_csv(args.labels).merge(
+        pd.read_csv(args.signals), on="question_id", suffixes=("", "_signal")
+    )
 
     train = labels[labels["question_id"].isin(set(split["train"]))]
     test = labels[labels["question_id"].isin(set(split["test"]))]
@@ -161,8 +191,14 @@ def main():
     per_category = policy_category(train, ladder)
     cheapest = min(ladder, key=lambda name: ladder[name])
 
+    lookup = policy_signal_lookup(train, ladder)
     results = {
         "strongest": score(test, [strongest] * len(test), ladder),
+        "signal_lookup": score(
+            test,
+            [lookup.get(rule_input(row), strongest) for _, row in test.iterrows()],
+            ladder,
+        ),
         "category": score(
             test,
             [per_category.get(c, strongest) for c in test["category"]],
@@ -175,6 +211,16 @@ def main():
         ),
     }
     results["_policies"] = {"strongest": strongest, "category": per_category}
+
+    if args.handwritten:
+        shipped = pd.read_csv(args.handwritten).set_index("question_id")
+        for variant in ("declared", "best_case"):
+            results[f"handwritten_{variant}"] = score(
+                test, [shipped.loc[qid, variant] for qid in test["question_id"]], ladder
+            )
+        results["_decisions_fired"] = (
+            shipped.loc[list(test["question_id"]), "decision"].value_counts().to_dict()
+        )
 
     if args.rules:
         fallback = strongest if args.rule_fallback == "strongest" else cheapest
