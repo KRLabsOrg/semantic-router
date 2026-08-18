@@ -1,0 +1,92 @@
+{
+  "strongest": {
+    "accuracy": 0.6130952380952381,
+    "mean_cost": 21.3,
+    "routed_cheaper_no_loss": 0.0,
+    "label_agreement": 0.09523809523809523,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 1.0
+    },
+    "frontier_accuracy": 0.6130952380952381,
+    "gain_over_frontier": 0.0
+  },
+  "category": {
+    "accuracy": 0.6026785714285714,
+    "mean_cost": 18.65714285714286,
+    "routed_cheaper_no_loss": 0.12202380952380952,
+    "label_agreement": 0.10416666666666667,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.7797619047619048,
+      "Qwen_Qwen2.5-14B-Instruct_direct": 0.22023809523809523
+    },
+    "frontier_accuracy": 0.5898260345804989,
+    "gain_over_frontier": 0.012852536848072527
+  },
+  "oracle": {
+    "accuracy": 0.7574404761904762,
+    "mean_cost": 9.959821428571429,
+    "routed_cheaper_no_loss": 0.6622023809523809,
+    "label_agreement": 0.7574404761904762,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.33779761904761907,
+      "Qwen_Qwen2.5-1.5B-Instruct_direct": 0.26785714285714285,
+      "Qwen_Qwen2.5-7B-Instruct_direct": 0.2544642857142857,
+      "Qwen_Qwen2.5-14B-Instruct_direct": 0.13988095238095238
+    },
+    "frontier_accuracy": 0.5132499158517574,
+    "gain_over_frontier": 0.24419056033871878
+  },
+  "_policies": {
+    "strongest": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+    "category": {
+      "biology": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "business": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "chemistry": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "computer science": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "economics": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "engineering": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "health": "Qwen_Qwen2.5-14B-Instruct_direct",
+      "history": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "law": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "math": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "other": "Qwen_Qwen2.5-14B-Instruct_direct",
+      "philosophy": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "physics": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+      "psychology": "Qwen_Qwen2.5-14B-Instruct_direct"
+    }
+  },
+  "induced": {
+    "accuracy": 0.5520833333333334,
+    "mean_cost": 14.332142857142859,
+    "routed_cheaper_no_loss": 0.21428571428571427,
+    "label_agreement": 0.13988095238095238,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.5014880952380952,
+      "Qwen_Qwen2.5-14B-Instruct_direct": 0.28422619047619047,
+      "Qwen_Qwen2.5-7B-Instruct_direct": 0.21428571428571427
+    },
+    "unmatched_share": 0.4836309523809524,
+    "ms_per_question": 2.174994357119431,
+    "fallback": "Qwen_Qwen2.5-32B-Instruct-AWQ_direct",
+    "frontier_accuracy": 0.5517462974773243,
+    "gain_over_frontier": 0.0003370358560090825
+  },
+  "_frontier": [
+    [
+      1.0,
+      0.26785714285714285
+    ],
+    [
+      4.7,
+      0.4330357142857143
+    ],
+    [
+      9.3,
+      0.5074404761904762
+    ],
+    [
+      21.3,
+      0.6130952380952381
+    ]
+  ]
+}

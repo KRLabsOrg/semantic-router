@@ -1,0 +1,42 @@
+{
+  "tfidf_logreg": {
+    "accuracy": 0.44642857142857145,
+    "mean_cost": 6.6955357142857155,
+    "routed_cheaper_no_loss": 0.38392857142857145,
+    "label_agreement": 0.2648809523809524,
+    "model_share": {
+      "Qwen_Qwen2.5-7B-Instruct_direct": 0.38839285714285715,
+      "Qwen_Qwen2.5-1.5B-Instruct_direct": 0.2857142857142857,
+      "Qwen_Qwen2.5-14B-Instruct_direct": 0.19642857142857142,
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.12946428571428573
+    },
+    "gain_over_frontier": -0.018884829747116194
+  },
+  "strongest": {
+    "accuracy": 0.6130952380952381,
+    "mean_cost": 21.3,
+    "routed_cheaper_no_loss": 0.0,
+    "label_agreement": 0.09523809523809523,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 1.0
+    },
+    "gain_over_frontier": 0.0
+  },
+  "category": {
+    "accuracy": 0.6026785714285714,
+    "mean_cost": 18.65714285714286,
+    "routed_cheaper_no_loss": 0.12202380952380952,
+    "label_agreement": 0.10416666666666667,
+    "model_share": {
+      "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.7797619047619048,
+      "Qwen_Qwen2.5-14B-Instruct_direct": 0.22023809523809523
+    },
+    "gain_over_frontier": 0.012852536848072527
+  },
+  "_success_auc": {
+    "Qwen_Qwen2.5-1.5B-Instruct_direct": 0.5938121047877145,
+    "Qwen_Qwen2.5-7B-Instruct_direct": 0.6210100026156523,
+    "Qwen_Qwen2.5-14B-Instruct_direct": 0.5764368172515527,
+    "Qwen_Qwen2.5-32B-Instruct-AWQ_direct": 0.6066887602688573
+  }
+}

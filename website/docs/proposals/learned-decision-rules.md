@@ -96,19 +96,59 @@ Compare, on held-out requests, against the routing labels defined above:
 
 - the current category-derived configuration, as produced by `result_to_config.py`;
 - a single strongest-model policy, as a cost ceiling;
-- induced rules.
+- induced rules;
+- the oracle, as the headroom bound.
 
-Report quality, cost, and the share of requests routed to a cheaper model with no
-quality loss. Report rule count and the fraction of traffic each rule covers, so
-that interpretability is measured rather than asserted.
+Accuracy and cost side by side are not sufficient, because a router that spends
+more also scores more. Every policy should be reported against the **mixing
+frontier**: the upper convex hull of the always-one-model policies, which a fixed
+random mix of two models reaches without inspecting the request at all. A router
+earns its keep only above that hull. This control is cheap to compute and belongs
+in any shared benchmark protocol for routing strategies (#2346).
 
-An accompanying experiment under `experiments/learned-decision-rules/` records
-the protocol and results. No shared benchmark protocol for comparing Router
-Learning strategies exists yet (#2346); this evaluation is written to be reusable
-as one.
+Also report rule count and per-rule traffic coverage, so that interpretability is
+measured rather than asserted.
+
+## What the first experiment shows
+
+`experiments/learned-decision-rules/` runs the protocol on MMLU-Pro across a
+four-model Qwen2.5 ladder (1.5B / 7B / 14B / 32B-AWQ), 1680 questions, 60/40
+split by question.
+
+| Policy | Accuracy | Mean cost | Gain over frontier |
+| --- | --- | --- | --- |
+| strongest | 0.613 | 21.30 | +0.000 |
+| category | 0.603 | 18.66 | +0.013 |
+| induced | 0.552 | 14.33 | +0.000 |
+| oracle | 0.757 | 9.96 | +0.244 |
+
+The routable structure is large: the oracle sits 24.4 points above the frontier.
+Induced rules do not recover it — they land exactly on the frontier, so they are
+worth nothing over a fixed model mix. Neither does a TF-IDF and
+logistic-regression probe, which is free of any rule-format constraint and lands
+1.9 points below it. Predicting a single model's success from the request text
+reaches AUC 0.58–0.62.
+
+The bottleneck is the input, not the rule format. Request text says what a
+request is about; it does not say whether a given model will answer it correctly.
+Two consequences for this proposal:
+
+- induction over request-derived signals alone should not be expected to improve
+  much on the current per-category configuration, and should not be pitched as
+  though it will;
+- the signals that would carry routing information are outcome-derived — a small
+  model's own uncertainty, self-consistency across samples, or a verifier's
+  judgement of a draft answer. Those are not currently signal types, and adding
+  one is a larger change than rule induction.
+
+The frontier control is the reusable part of this result regardless of what
+happens to the rest: it is a cheap way to tell a real routing gain from a
+spending increase.
 
 ## Open questions
 
+- Given that request-derived features measure so weakly, is rule induction worth
+  pursuing before an outcome-derived signal type exists?
 - Which feature vocabulary is admissible: only signals the router already
   computes, or also cheap request-derived features that would need a new signal?
 - How should induced rules be ordered against hand-authored ones — separate

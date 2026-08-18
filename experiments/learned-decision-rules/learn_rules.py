@@ -42,7 +42,7 @@ def parse_args():
         default=os.environ.get("RULECHEF_BASE_URL", "https://inference.baseten.co/v1"),
     )
     parser.add_argument(
-        "--max-train", type=int, default=600, help="Cap on training examples"
+        "--max-train", type=int, default=2000, help="Cap on training examples"
     )
     parser.add_argument("--refinement-iterations", type=int, default=5)
     return parser.parse_args()
@@ -52,9 +52,12 @@ def build_task() -> Task:
     return Task(
         name="Model routing",
         description=(
-            "Given a question sent to an LLM router, choose the cheapest model "
-            "expected to answer it correctly. Larger models cost more, so only "
-            "route to them when the question needs it."
+            "Given a request reaching an LLM router, prefixed with its domain "
+            "signal in square brackets, choose the cheapest model expected to "
+            "answer it correctly. Larger models cost more, so route up only when "
+            "the request needs it. Requests no rule matches fall back to the "
+            "strongest model, so a rule is only worth writing when it can safely "
+            "route below that."
         ),
         input_schema={"text": "str"},
         output_schema={"label": "str"},
@@ -89,7 +92,8 @@ def main():
         synthesis_strategy="per_class",
     )
     for _, row in train.iterrows():
-        chef.add_example({"text": row["question"]}, {"label": row["label"]})
+        text = f"[{row['category']}] {row['question']}"
+        chef.add_example({"text": text}, {"label": row["label"]})
 
     chef.learn_rules(max_refinement_iterations=args.refinement_iterations)
 

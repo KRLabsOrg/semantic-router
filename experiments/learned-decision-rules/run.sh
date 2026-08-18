@@ -40,3 +40,6 @@ python "$HERE/learn_rules.py" \
 python "$HERE/evaluate_policies.py" \
   --labels "$OUT/labels.csv" --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
   --rules "$OUT/rules/routing_rules.json" --out "$OUT/metrics.json"
+python "$HERE/probe_ceiling.py" \
+  --labels "$OUT/labels.csv" --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
+  --out "$OUT/probe.json"

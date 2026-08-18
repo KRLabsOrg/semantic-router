@@ -29,6 +29,12 @@ def parse_args():
         help="Learned ruleset JSON; omit to skip the induced policy",
     )
     parser.add_argument(
+        "--rule-fallback",
+        choices=["strongest", "cheapest"],
+        default="strongest",
+        help="Model to use when no rule matches",
+    )
+    parser.add_argument(
         "--out", type=Path, required=True, help="Where to write the metrics JSON"
     )
     return parser.parse_args()
@@ -56,6 +62,40 @@ def score(frame: pd.DataFrame, choices: list, ladder: dict) -> dict:
     }
 
 
+def mixing_frontier(test: pd.DataFrame, ladder: dict) -> list:
+    """Upper convex hull of the always-one-model policies.
+
+    Any point on this hull is reachable by randomly mixing two models at a fixed
+    ratio, with no request inspection at all. A router only earns its keep by
+    landing above it.
+    """
+    points = sorted((ladder[name], test[f"correct::{name}"].mean()) for name in ladder)
+    hull = []
+    for point in points:
+        while len(hull) >= 2:
+            (x1, y1), (x2, y2) = hull[-2], hull[-1]
+            x3, y3 = point
+            # Drop the middle point if it sits below the chord around it.
+            if (y2 - y1) * (x3 - x1) <= (y3 - y1) * (x2 - x1):
+                hull.pop()
+            else:
+                break
+        if hull and point[1] <= hull[-1][1]:
+            continue
+        hull.append(point)
+    return hull
+
+
+def frontier_accuracy(hull: list, cost: float) -> float:
+    """Accuracy the mixing frontier reaches at the given cost."""
+    if cost <= hull[0][0]:
+        return hull[0][1]
+    for (x1, y1), (x2, y2) in zip(hull, hull[1:], strict=False):
+        if cost <= x2:
+            return y1 + (y2 - y1) * (cost - x1) / (x2 - x1)
+    return hull[-1][1]
+
+
 def policy_strongest(train: pd.DataFrame, ladder: dict) -> str:
     """The single most accurate model on the training split."""
     return max(ladder, key=lambda name: train[f"correct::{name}"].mean())
@@ -70,6 +110,11 @@ def policy_category(train: pd.DataFrame, ladder: dict) -> dict:
             key=lambda name: (group[f"correct::{name}"].mean(), -ladder[name]),
         )
     return best
+
+
+def rule_input(row) -> str:
+    """The text a rule sees: the request plus the domain signal the router already has."""
+    return f"[{row['category']}] {row['question']}"
 
 
 def run_rules(rules_path: Path, questions: list, ladder: dict, fallback: str) -> tuple:
@@ -132,10 +177,24 @@ def main():
     results["_policies"] = {"strongest": strongest, "category": per_category}
 
     if args.rules:
+        fallback = strongest if args.rule_fallback == "strongest" else cheapest
         choices, rule_stats = run_rules(
-            args.rules, list(test["question"]), ladder, fallback=cheapest
+            args.rules,
+            [rule_input(row) for _, row in test.iterrows()],
+            ladder,
+            fallback=fallback,
         )
+        rule_stats["fallback"] = fallback
         results["induced"] = score(test, choices, ladder) | rule_stats
+
+    hull = mixing_frontier(test, ladder)
+    for name, metrics in results.items():
+        if name.startswith("_"):
+            continue
+        reference = frontier_accuracy(hull, metrics["mean_cost"])
+        metrics["frontier_accuracy"] = reference
+        metrics["gain_over_frontier"] = metrics["accuracy"] - reference
+    results["_frontier"] = hull
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(results, indent=2))
