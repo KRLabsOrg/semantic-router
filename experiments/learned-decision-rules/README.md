@@ -115,6 +115,32 @@ synthesised by `openai/gpt-oss-120b` via Baseten.
 | **signal lookup table (ceiling for any rule set)** | 0.586 | 18.89 | **−0.006** |
 | oracle (cheapest correct model) | 0.757 | 9.96 | +0.244 |
 
+### The whole achievable rule curve, not one point
+
+One lookup table is one point on a curve, and a rule set can be tuned to any
+cost preference. `sweep_rule_curve.py` traces the whole thing: for each cost
+weight lambda, pick per signal state the model maximising
+`accuracy - lambda * cost`. Lambda is chosen on a validation slice of the
+training split, never on the test split, because picking the best of eighteen
+lambdas on test manufactures a gain.
+
+Scored on test, fitted on train:
+
+| lambda | Accuracy | Mean cost | Gain over frontier |
+| --- | --- | --- | --- |
+| 0.000 | 0.570 | 17.91 | −0.013 |
+| 0.008 | 0.533 | 14.59 | −0.021 |
+| 0.016 | 0.506 | 8.12 | +0.018 |
+| 0.022 | 0.500 | 7.46 | +0.022 |
+| 0.024 | 0.378 | 3.75 | −0.013 |
+| 0.050 | 0.327 | 2.38 | −0.002 |
+| 0.150 | 0.268 | 1.01 | −0.000 |
+
+Validation selects lambda 0.024, which scores **−0.013 on test, 95% CI
+[−0.039, +0.013]**. The apparent +0.022 at lambda 0.022 does not survive honest
+selection: the curve has a cliff between the two, and the choice does not
+transfer. No cost point on the curve shows a gain that holds up.
+
 ### The signal vocabulary is the binding constraint
 
 The lookup table is the most expressive rule set possible over these signals,
@@ -153,10 +179,29 @@ frontier, and a TF-IDF and logistic-regression probe over request text landed
 1.9 points below it. Predicting one model's success from the request reaches AUC
 0.58–0.62 (`probe_ceiling.py`).
 
+## What this does and does not answer
+
+The lookup table assigns an independent routing choice to every distinct signal
+vector. That is strictly more expressive than any boolean combination of
+signals: every nested AND, OR and NOT the DSL can express is one particular
+function of the signal vector, and the table is free to be the best one. So for
+the objective measured here, "combine the signals more cleverly" is not a lever
+that exists — it is already maximised, and it does not clear the baseline.
+
+That conclusion is bounded by the objective and the traffic:
+
+- the outcome measured is answer correctness, which is what model-choice rules
+  exist to optimise. Rules whose purpose is safety, privacy or compliance are
+  not evaluated by it;
+- `jailbreak` and `pii` never fire on MMLU-Pro, so this run says nothing about
+  combining them. Testing that needs traffic where those signals vary and an
+  outcome measure that reflects what they are for.
+
 ## Conclusion
 
-Learning cannot improve the hand-written rules while both are limited to the same
-signals: the ceiling for any rule set over that vocabulary is at the frontier.
+For model-choice routing, learning cannot improve the hand-written rules while
+both are limited to the same signals: the ceiling for any rule set over that
+vocabulary is at the frontier.
 The gap the oracle shows is real, but closing it needs signals that carry outcome
 information — a model's own uncertainty, self-consistency across samples, or a
 verifier on a draft answer — not better rules over the existing ones.

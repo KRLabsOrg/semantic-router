@@ -57,6 +57,10 @@ python "$HERE/evaluate_policies.py" \
   --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
   --handwritten "$OUT/handwritten.csv" \
   --rules "$OUT/rules/routing_rules.json" --out "$OUT/metrics.json"
+python "$HERE/sweep_rule_curve.py" \
+  --labels "$OUT/labels.csv" --signals "$OUT/signals.csv" \
+  --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
+  --out "$OUT/rule_curve.json"
 python "$HERE/probe_ceiling.py" \
   --labels "$OUT/labels.csv" --split "$OUT/split.json" --ladder "$HERE/ladder.json" \
   --out "$OUT/probe.json"

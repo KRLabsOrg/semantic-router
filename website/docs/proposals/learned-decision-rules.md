@@ -130,11 +130,22 @@ programmatically over the same signals.
 
 The lookup table is the result that settles the question. A rule set is a
 function of the signal vector, so one routing choice per distinct vector is the
-most expressive rule set that can exist — and it does not beat a fixed model
-mix. No rule format and no induction method can do better over this vocabulary.
+most expressive rule set that can exist — strictly more expressive than any
+nested AND, OR or NOT the DSL can write, since every such formula is one
+particular function of that vector. It does not beat a fixed model mix.
+
+One table is one point on a curve, so the experiment also sweeps a cost weight
+and traces the whole achievable rule curve, choosing the weight on a validation
+slice rather than on the test split. The selected point scores **−0.013, 95% CI
+[−0.039, +0.013]**. No cost point shows a gain that survives honest selection.
+
 Across 672 held-out requests the signals take only **40 distinct values**, while
 the oracle sits 24.4 points above the frontier. The routable structure is real
 and is not expressible in 40 states.
+
+This bounds the objective it measures — answer correctness, which is what
+model-choice rules exist to optimise. It says nothing about rules whose purpose
+is safety or privacy: `jailbreak` and `pii` never fire on this traffic.
 
 Evaluating the shipped rules against traffic rather than reading them also
 surfaces conditions that cannot fire:
